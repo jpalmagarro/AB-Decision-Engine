@@ -130,6 +130,7 @@ if st.session_state['run']:
     
     # Determine Winner
     obs_lift = freq_res['lift']
+    ci_lower, ci_upper = freq_res['confidence_interval']
     
     winner_color = "normal"
     if freq_res['significant']:
@@ -137,7 +138,7 @@ if st.session_state['run']:
         else: winner_color = "red" 
         
     kpi1.metric("Observed Lift", f"{obs_lift*100:.2f}%", 
-                delta=f"{obs_lift*100:.2f} pts" if obs_lift != 0 else None,
+                delta=f"95% CI: [{ci_lower*100:.2f}%, {ci_upper*100:.2f}%]",
                 delta_color=winner_color)
     
     kpi2.metric(f"Confidence ({'T-Test' if metric_key == 'revenue' else 'Z-Test'})", 
@@ -147,7 +148,14 @@ if st.session_state['run']:
     kpi3.metric("Prob. B is Better (Bayesian)", f"{bayes_res['prob_b_wins']*100:.2f}%",
                 help=f"Expected Loss: {bayes_res['expected_loss']:.4f}")
     
-    kpi4.metric(f"Avg {metric_type}", f"{val_b:.2f}{val_label}", f"vs A: {val_a:.2f}{val_label}")
+    if metric_key == 'revenue':
+         aov_text = f"AOV: ${freq_res['stats_b']['aov']:.2f} vs ${freq_res['stats_a']['aov']:.2f}"
+    else:
+         aov_text = f"vs A: {val_a:.2f}{val_label}"
+         
+    kpi4.metric(f"Avg {metric_type}", f"{val_b:.2f}{val_label}", 
+                delta=aov_text if metric_key == 'revenue' else f"vs A: {val_a:.2f}{val_label}",
+                delta_color="off")
 
     st.divider()
 

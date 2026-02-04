@@ -58,13 +58,33 @@ class FrequentistTest:
         if se == 0:
             z_score = 0
             p_value = 1.0
+            ci_lower = 0.0
+            ci_upper = 0.0
         else:
             z_score = (p_b - p_a) / se
             p_value = 2 * (1 - stats.norm.cdf(abs(z_score))) # Two-sided
             
+            # 95% Confidence Interval for Lift (Approximation)
+            # CI_diff = (p_b - p_a) +/- 1.96 * SE
+            # CI_lift = CI_diff / p_a
+            z_crit = 1.96
+            diff = p_b - p_a
+            margin = z_crit * se
+            
+            ci_lower_diff = diff - margin
+            ci_upper_diff = diff + margin
+            
+            if p_a > 0:
+                ci_lower = ci_lower_diff / p_a
+                ci_upper = ci_upper_diff / p_a
+            else:
+                ci_lower = 0
+                ci_upper = 0
+            
         return {
             'metric': 'conversion',
             'lift': lift,
+            'confidence_interval': (ci_lower, ci_upper),
             'p_value': p_value,
             'significant': p_value < 0.05,
             'stats_a': {'n': n_a, 'mean': p_a},
@@ -74,13 +94,18 @@ class FrequentistTest:
     def analyze_revenue(self, df):
         """
         Calculates Lift, T-Score, and P-Value (Welch's T-Test) for Revenue (RPV).
+        Also calculates AOV (Average Order Value) for context.
         """
         # Revenue Per Visitor (including 0s)
         rev_a = df[df['group'] == 'A']['revenue']
         rev_b = df[df['group'] == 'B']['revenue']
         
+        # Calculate AOV (Revenue per Conversion, excluding 0s)
+        aov_a = rev_a[rev_a > 0].mean() if (rev_a > 0).any() else 0.0
+        aov_b = rev_b[rev_b > 0].mean() if (rev_b > 0).any() else 0.0
+        
         if len(rev_a) < 2 or len(rev_b) < 2:
-             return {'lift': 0, 'p_value': 1.0, 'significant': False, 'stats_a': {'n':0, 'mean':0}, 'stats_b': {'n':0, 'mean':0}}
+             return {'lift': 0, 'p_value': 1.0, 'significant': False, 'stats_a': {'n':0, 'mean':0, 'aov':0}, 'stats_b': {'n':0, 'mean':0, 'aov':0}}
         
         mean_a = rev_a.mean()
         mean_b = rev_b.mean()
@@ -91,13 +116,31 @@ class FrequentistTest:
         # Welch's T-Test (Does not assume equal variance)
         t_stat, p_value = stats.ttest_ind(rev_b, rev_a, equal_var=False)
         
+        # Confidence Interval for Welch's T
+        # Degrees of freedom approximation (complex, but we can use n_a + n_b - 2 for simpler CI or scipy)
+        # We'll use the SE from the test
+        se_diff = np.sqrt(rev_a.var(ddof=1)/len(rev_a) + rev_b.var(ddof=1)/len(rev_b))
+        diff = mean_b - mean_a
+        margin = 1.96 * se_diff # Using Z for large N, technically should be T but N>1000 so Z is fine
+        
+        ci_lower_diff = diff - margin
+        ci_upper_diff = diff + margin
+        
+        if mean_a > 0:
+            ci_lower = ci_lower_diff / mean_a
+            ci_upper = ci_upper_diff / mean_a
+        else:
+            ci_lower = 0
+            ci_upper = 0
+        
         return {
             'metric': 'revenue',
             'lift': lift,
+            'confidence_interval': (ci_lower, ci_upper),
             'p_value': p_value,
             'significant': p_value < 0.05,
-            'stats_a': {'n': len(rev_a), 'mean': mean_a},
-            'stats_b': {'n': len(rev_b), 'mean': mean_b}
+            'stats_a': {'n': len(rev_a), 'mean': mean_a, 'aov': aov_a},
+            'stats_b': {'n': len(rev_b), 'mean': mean_b, 'aov': aov_b}
         }
         
     def get_sequential_boundary(self, n_current, n_total_planned, alpha=0.05):
