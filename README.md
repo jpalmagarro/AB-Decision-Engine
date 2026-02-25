@@ -1,6 +1,6 @@
 ﻿# 🧪 AB Decision Engine: A Training Simulator for Product Managers
 
-**A robust A/B testing simulator designed to train data scientists and product managers in decision-making under "hostile" statistical environments.**
+**A robust A/B testing simulator to train decision-making in complex and noisy statistical environments**
 
 [![Python](https://img.shields.io/badge/Python-3.12-3776AB?style=flat&logo=python&logoColor=white)](https://www.python.org/)
 [![Streamlit](https://img.shields.io/badge/Streamlit-1.42+-FF4B4B?style=flat&logo=streamlit&logoColor=white)](https://streamlit.io/)
